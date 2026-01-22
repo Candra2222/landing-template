@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>TOOLS AUTO GENERATE</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--p:#14b8a6;--pd:#0f766e}
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;
+  display:flex;justify-content:center;align-items:center;
+  background:linear-gradient(135deg,#e0f2fe,#f8fafc);
+  font-family:system-ui
+}
+.card{
+  width:100%;max-width:420px;
+  background:#fff;border-radius:22px;
+  padding:26px;
+  box-shadow:0 25px 60px rgba(0,0,0,.15)
+}
+h1{text-align:center;margin-bottom:10px}
+button,select,input{
+  width:100%;padding:14px;margin-top:12px;
+  border-radius:14px;border:1px solid #e5e7eb
+}
+button{
+  background:linear-gradient(135deg,var(--p),var(--pd));
+  color:#fff;border:none;font-weight:600;cursor:pointer
+}
+button.loading{pointer-events:none;color:transparent}
+button.loading::after{
+  content:'';width:20px;height:20px;
+  border:3px solid rgba(255,255,255,.4);
+  border-top-color:#fff;border-radius:50%;
+  position:absolute;inset:0;margin:auto;
+  animation:spin .8s linear infinite
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+button.secondary{background:#bbf7d0;color:#065f46}
+.preview{text-align:center;margin-top:14px}
+.preview img{
+  max-width:100%;border-radius:16px;
+  box-shadow:0 15px 30px rgba(0,0,0,.25)
+}
+#error{
+  display:none;margin-top:12px;
+  background:#fee2e2;color:#7f1d1d;
+  padding:12px;border-radius:12px;font-size:13px
+}
+footer{text-align:center;margin-top:16px;font-size:12px;opacity:.6}
+</style>
+</head>
+
+<body>
+<div class="card">
+  <h1>TOOLS AUTO GENERATE</h1>
+
+  <button id="repoBtn" onclick="loadRepos()">Ambil Repository</button>
+  <select id="repoSelect">
+    <option value="">— Pilih repository —</option>
+  </select>
+
+  <div class="preview">
+    <img id="imgPreview">
+  </div>
+
+  <button class="secondary" onclick="pickImages()">Ganti Gambar</button>
+  <button id="genBtn" onclick="generate()">Generate</button>
+
+  <div id="error"></div>
+
+  <input id="result" readonly placeholder="URL hasil generate">
+  <button class="secondary" onclick="copy()">Copy</button>
+
+  <footer>tools by sesepuh © 2026</footer>
+</div>
+
+<script>
+const IMAGES=[
+ "https://picsum.photos/600/400?1",
+ "https://picsum.photos/600/400?2",
+ "https://picsum.photos/600/400?3",
+ "https://picsum.photos/600/400?4"
+];
+let selected=[];
+
+function pickImages(){
+  selected=[...IMAGES].sort(()=>0.5-Math.random()).slice(0,3);
+  imgPreview.src=selected[0];
+}
+pickImages();
+
+function setLoading(b,on){
+  b.classList.toggle('loading',on);
+  b.disabled=on;
+}
+
+function showError(t){
+  error.style.display='block';
+  error.textContent=t;
+}
+
+async function loadRepos(){
+  setLoading(repoBtn,true);
+  error.style.display='none';
+  repoSelect.innerHTML='<option>Memuat...</option>';
+  try{
+    const r=await fetch('/github');
+    const d=await r.json();
+    repoSelect.innerHTML='<option value="">— Pilih repository —</option>';
+    d.forEach(x=>{
+      const o=document.createElement('option');
+      o.value=x.full_name;
+      o.textContent=x.full_name;
+      repoSelect.appendChild(o);
+    });
+  }catch(e){
+    showError(e.message);
+  }
+  setLoading(repoBtn,false);
+}
+
+async function generate(){
+  error.style.display='none';
+  result.value='';
+  if(!repoSelect.value){
+    showError('Repository belum dipilih');
+    return;
+  }
+  setLoading(genBtn,true);
+  try{
+    const r=await fetch('/generate',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        repo:repoSelect.value,
+        images:selected
+      })
+    });
+    const d=await r.json();
+    if(!d.url) throw d;
+    result.value=d.url;
+  }catch(e){
+    showError(JSON.stringify(e,null,2));
+  }
+  setLoading(genBtn,false);
+}
+
+function copy(){
+  if(!result.value)return;
+  navigator.clipboard.writeText(result.value);
+  alert('Link disalin');
+}
+</script>
+</body>
+</html>
